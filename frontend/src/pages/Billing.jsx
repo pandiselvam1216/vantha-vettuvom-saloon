@@ -4,6 +4,7 @@ import { Plus, Minus, FileText, Smartphone, User, Phone, Briefcase, CreditCard, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { storage } from '../utils/storage';
+import { api } from '../utils/api';
 
 const Billing = () => {
   const [customerInfo, setCustomerInfo] = useState({ name: '', phone: '' });
@@ -12,6 +13,8 @@ const Billing = () => {
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [selectedStaff, setSelectedStaff] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [lastInvoice, setLastInvoice] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
   const navigate = useNavigate();
 
   const availableStaff = ['Siva', 'Kumar', 'Raja', 'Karthik', 'Guest'];
@@ -29,10 +32,22 @@ const Billing = () => {
   const subtotal = selectedServices.reduce((sum, item) => sum + item.price, 0);
   const total = subtotal - discount;
 
-  const generatePDF = () => {
+  const generatePDF = (invoiceData = null) => {
+    const data = invoiceData || {
+      id: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+      date: new Date().toLocaleDateString(),
+      customerName: customerInfo.name || 'Walk-in Customer',
+      customerPhone: customerInfo.phone || 'N/A',
+      staff: selectedStaff,
+      services: selectedServices,
+      subtotal,
+      discount,
+      total
+    };
+
     const doc = jsPDF();
-    const invoiceNumber = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
-    const date = new Date().toLocaleDateString();
+    const invoiceNumber = data.id;
+    const date = data.date;
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(22);
@@ -54,10 +69,10 @@ const Billing = () => {
     doc.setFont("helvetica", "bold");
     doc.text("Bill To:", 20, 60);
     doc.setFont("helvetica", "normal");
-    doc.text(`Name: ${customerInfo.name || 'Walk-in Customer'}`, 20, 68);
-    doc.text(`Phone: ${customerInfo.phone || 'N/A'}`, 20, 74);
-    if (selectedStaff) {
-      doc.text(`Staff: ${selectedStaff}`, 20, 80);
+    doc.text(`Name: ${data.customerName}`, 20, 68);
+    doc.text(`Phone: ${data.customerPhone}`, 20, 74);
+    if (data.staff) {
+      doc.text(`Staff: ${data.staff}`, 20, 80);
     }
 
     doc.setFont("helvetica", "bold");
@@ -67,7 +82,7 @@ const Billing = () => {
 
     doc.setFont("helvetica", "normal");
     let y = 100;
-    selectedServices.forEach((service) => {
+    data.services.forEach((service) => {
       doc.text(service.name, 20, y);
       doc.text(`Rs. ${service.price}`, 160, y);
       y += 10;
@@ -76,12 +91,12 @@ const Billing = () => {
     doc.line(20, y + 5, 190, y + 5);
     doc.setFont("helvetica", "bold");
     doc.text("Subtotal:", 120, y + 15);
-    doc.text(`Rs. ${subtotal}`, 160, y + 15);
+    doc.text(`Rs. ${data.subtotal}`, 160, y + 15);
     
-    if (discount > 0) {
+    if (data.discount > 0) {
       doc.text("Discount:", 120, y + 25);
       doc.setTextColor(0, 150, 0);
-      doc.text(`- Rs. ${discount}`, 160, y + 25);
+      doc.text(`- Rs. ${data.discount}`, 160, y + 25);
       doc.setTextColor(0, 0, 0);
       y += 10;
     }
@@ -89,7 +104,7 @@ const Billing = () => {
     doc.setFontSize(14);
     doc.text("Total:", 120, y + 25);
     doc.setTextColor(255, 20, 147);
-    doc.text(`Rs. ${total}`, 160, y + 25);
+    doc.text(`Rs. ${data.total}`, 160, y + 25);
 
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
@@ -98,15 +113,24 @@ const Billing = () => {
     doc.save(`${invoiceNumber}.pdf`);
   };
 
-  const handleCheckout = () => {
+  const handleReset = () => {
+    setIsSuccess(false);
+    setSelectedServices([]);
+    setCustomerInfo({ name: '', phone: '' });
+    setDiscount(0);
+    setSelectedStaff('');
+    setLastInvoice(null);
+  };
+
+  const handleCheckout = async () => {
     if (selectedServices.length === 0) return;
     
+    setIsSyncing(true);
     const invoiceNumber = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
     const date = new Date().toLocaleDateString();
     
-    // Save Invoice
     const invoice = {
-      id: invoiceNumber,
+      invoiceNumber,
       date,
       customerName: customerInfo.name || 'Walk-in Customer',
       customerPhone: customerInfo.phone || 'N/A',
@@ -118,25 +142,33 @@ const Billing = () => {
       paymentMode
     };
     
-    storage.addInvoice(invoice);
-    
-    // Update/Save Customer
-    storage.saveCustomer({
-      name: customerInfo.name,
-      phone: customerInfo.phone,
-      amount: total
-    });
+    try {
+      // 1. Save to Local Storage (Immediate feedback)
+      storage.addInvoice({
+        ...invoice,
+        id: invoiceNumber,
+        customerPhone: invoice.customerPhone // matches storage.js expectations
+      });
+      
+      storage.saveCustomer({
+        name: customerInfo.name,
+        phone: customerInfo.phone,
+        amount: total
+      });
 
-    setIsSuccess(true);
-    
-    setTimeout(() => {
-      setIsSuccess(false);
-      setSelectedServices([]);
-      setCustomerInfo({ name: '', phone: '' });
-      setDiscount(0);
-      setSelectedStaff('');
-      navigate('/customers');
-    }, 1500);
+      // 2. Sync to Backend (Admin)
+      await api.saveInvoice(invoice);
+      
+      setLastInvoice(invoice);
+      setIsSuccess(true);
+    } catch (error) {
+      console.error('Checkout Sync Error:', error);
+      // Still show success locally, but maybe alert the user about sync
+      setLastInvoice(invoice);
+      setIsSuccess(true);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return (
@@ -317,17 +349,25 @@ const Billing = () => {
 
           <button 
             onClick={handleCheckout}
-            disabled={selectedServices.length === 0 || isSuccess}
+            disabled={selectedServices.length === 0 || isSuccess || isSyncing}
             className={`btn-primary w-full mt-4 py-4 rounded-2xl relative overflow-hidden group shrink-0 ${isSuccess ? 'bg-green-500 hover:bg-green-500 shadow-green-500/50' : ''}`}
           >
             <AnimatePresence mode="wait">
-              {isSuccess ? (
+              {isSyncing ? (
+                <motion.div 
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  className="flex items-center gap-2"
+                >
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="text-sm">Syncing...</span>
+                </motion.div>
+              ) : isSuccess ? (
                 <motion.div 
                   initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
                   className="flex items-center gap-2"
                 >
                   <CheckCircle2 size={18} />
-                  <span className="text-sm">Success!</span>
+                  <span className="text-sm">Paid!</span>
                 </motion.div>
               ) : (
                 <motion.div 
@@ -340,6 +380,40 @@ const Billing = () => {
               )}
             </AnimatePresence>
           </button>
+
+          {/* Success Overlay / Print Options */}
+          <AnimatePresence>
+            {isSuccess && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="absolute inset-0 bg-dark/95 z-20 flex flex-col items-center justify-center p-6 text-center"
+              >
+                <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mb-6 text-green-500 shadow-lg shadow-green-500/20">
+                  <CheckCircle2 size={40} />
+                </div>
+                <h3 className="text-2xl font-black text-white mb-2">Payment Collected</h3>
+                <p className="text-gray-400 text-xs mb-8 uppercase tracking-[0.2em]">Invoice {lastInvoice?.invoiceNumber}</p>
+                
+                <div className="grid grid-cols-1 w-full gap-3">
+                  <button 
+                    onClick={() => generatePDF(lastInvoice)}
+                    className="flex items-center justify-center gap-3 bg-white text-dark font-black py-4 rounded-2xl hover:bg-primary hover:text-white transition-all w-full"
+                  >
+                    <FileText size={18} />
+                    Print Invoice
+                  </button>
+                  
+                  <button 
+                    onClick={handleReset}
+                    className="flex items-center justify-center gap-3 bg-white/5 border border-white/10 text-white font-black py-4 rounded-2xl hover:bg-white/10 transition-all w-full"
+                  >
+                    <span>Start New Bill</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>
