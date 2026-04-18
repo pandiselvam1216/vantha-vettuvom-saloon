@@ -182,8 +182,9 @@ const Customers = () => {
           </div>
         ))}
       </div>
+    </div>
 
-      {/* Invoice History Modal */}
+    {/* Invoice History Modal */}
       <AnimatePresence>
         {viewingInvoices && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
