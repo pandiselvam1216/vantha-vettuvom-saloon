@@ -1,3 +1,5 @@
+import React, { useState } from 'react';
+import { jsPDF } from 'jspdf';
 import { Plus, Minus, FileText, Smartphone, User, Phone, Briefcase, CreditCard, Banknote, QrCode, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';

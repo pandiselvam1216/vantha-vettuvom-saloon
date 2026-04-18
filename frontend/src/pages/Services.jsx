@@ -53,7 +53,7 @@ const Services = () => {
   };
 
   return (
-    <div className="space-y-8 pb-20 md:pb-0">
+    <div className="flex flex-col h-full overflow-hidden space-y-4 md:space-y-6 page-transition">
       
       {/* Premium Header Banner */}
       <div className="relative overflow-hidden glass-card p-6 md:p-8 rounded-3xl border-white/10 shadow-2xl bg-gradient-to-br from-[#1a1a1a] to-dark">
@@ -114,7 +114,8 @@ const Services = () => {
       </div>
 
       {/* Services Grid (Cards instead of Table) */}
-      <motion.div layout className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="flex-1 overflow-y-auto pr-1 scroll-area">
+        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-6">
         <AnimatePresence>
           {filteredServices.map((service, index) => (
             <motion.div
@@ -174,6 +175,7 @@ const Services = () => {
           ))}
         </AnimatePresence>
       </motion.div>
+    </div>
 
       {filteredServices.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 opacity-50">

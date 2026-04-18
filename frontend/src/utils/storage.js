@@ -30,6 +30,11 @@ const saveToStorage = (key, data) => {
   localStorage.setItem(key, JSON.stringify(data));
 };
 
+const normalizePhone = (phone) => {
+  if (!phone) return 'N/A';
+  return phone.toString().replace(/\D/g, ''); // Remove non-numeric characters
+};
+
 export const storage = {
   // Services
   getServices: () => getFromStorage(STORAGE_KEYS.SERVICES, DEFAULT_SERVICES),
@@ -52,10 +57,14 @@ export const storage = {
   },
 
   // Customers
-  getCustomers: () => getFromStorage(STORAGE_KEYS.CUSTOMERS, DEFAULT_CUSTOMERS),
+  getCustomers: () => {
+    const customers = getFromStorage(STORAGE_KEYS.CUSTOMERS, DEFAULT_CUSTOMERS);
+    return customers.map(c => ({ ...c, normalizedPhone: normalizePhone(c.phone) }));
+  },
   saveCustomer: (customerData) => {
     const customers = storage.getCustomers();
-    let customer = customers.find(c => c.phone === customerData.phone);
+    const normalizedInput = normalizePhone(customerData.phone);
+    let customer = customers.find(c => normalizePhone(c.phone) === normalizedInput);
     
     if (customer) {
       customer.name = customerData.name || customer.name;
@@ -83,10 +92,15 @@ export const storage = {
   getInvoices: () => getFromStorage(STORAGE_KEYS.INVOICES, []),
   addInvoice: (invoice) => {
     const invoices = storage.getInvoices();
-    invoices.push({ ...invoice, id: invoice.id || `INV-${Date.now()}` });
+    invoices.push({ 
+      ...invoice, 
+      id: invoice.id || `INV-${Date.now()}`,
+      normalizedPhone: normalizePhone(invoice.customerPhone)
+    });
     saveToStorage(STORAGE_KEYS.INVOICES, invoices);
   },
   getInvoicesByCustomer: (phone) => {
-    return storage.getInvoices().filter(inv => inv.customerPhone === phone);
+    const normalizedInput = normalizePhone(phone);
+    return storage.getInvoices().filter(inv => normalizePhone(inv.customerPhone) === normalizedInput);
   }
 };

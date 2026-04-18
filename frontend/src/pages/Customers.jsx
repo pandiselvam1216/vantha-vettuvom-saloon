@@ -101,8 +101,8 @@ const Customers = () => {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+    <div className="flex flex-col h-full overflow-hidden space-y-6 page-transition">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
         <h1 className="text-2xl font-bold">Customer Directory</h1>
         
         <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
@@ -131,7 +131,8 @@ const Customers = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="flex-1 overflow-y-auto pr-1 scroll-area">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-6">
         {filteredCustomers.map((customer) => (
           <div 
             key={customer.id} 
