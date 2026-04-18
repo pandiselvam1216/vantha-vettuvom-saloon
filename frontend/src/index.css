@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dark text-light antialiased selection:bg-primary/30 h-screen overflow-hidden;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  /* Scrollable area within a viewport-locked page */
+  .scroll-area {
+    @apply overflow-y-auto no-scrollbar;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-dark/40 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-[0_8px_32px_0_rgba(0,0,0,0.8)] transition-all duration-500 hover:border-white/20;
+  }
+  
+  .glass-input {
+    @apply bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-white/[0.05] transition-all text-light placeholder:text-gray-500;
+  }
+  
+  .btn-primary {
+    @apply bg-primary hover:bg-primary/90 text-white font-bold py-4 px-8 rounded-2xl transition-all shadow-[0_0_20px_rgba(255,20,147,0.3)] hover:shadow-[0_0_35px_rgba(255,20,147,0.5)] active:scale-95 flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold py-4 px-8 rounded-2xl transition-all active:scale-95;
+  }
+}
+
+@layer utilities {
+  .bg-mesh {
+    background-color: #0a0a0a;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(255, 20, 147, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(255, 20, 147, 0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+    animation: mesh-float 20s ease infinite;
+  }
+
+  @keyframes mesh-float {
+    0%, 100% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-primary to-pink-300;
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(255, 20, 147, 0.4);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+}
+
+/* Custom transitions */
+.page-transition {
+  animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
